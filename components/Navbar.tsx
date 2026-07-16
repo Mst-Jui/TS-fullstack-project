@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 interface CurrentUser {
   name: string;
@@ -14,12 +14,14 @@ export default function Navbar() {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [open, setOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
 
+  // Re-check auth whenever the route changes (e.g. right after login/register redirects to "/")
   useEffect(() => {
     fetch("/api/auth/me")
       .then((r) => r.json())
       .then((d) => setUser(d.user));
-  }, []);
+  }, [pathname]);
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -39,6 +41,15 @@ export default function Navbar() {
     { href: "/items/manage", label: "Manage Items" }
   ];
 
+  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
+
+  const linkClass = (href: string) =>
+    `relative text-sm font-medium pb-1 transition-colors hover:text-primary ${
+      isActive(href)
+        ? "text-primary after:absolute after:left-0 after:-bottom-[1px] after:h-[2px] after:w-full after:rounded-full after:bg-primary"
+        : "text-neutral"
+    }`;
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
@@ -48,17 +59,17 @@ export default function Navbar() {
 
         <nav className="hidden items-center gap-6 md:flex">
           {loggedOutLinks.map((l) => (
-            <Link key={l.href} href={l.href} className="text-sm font-medium text-neutral hover:text-primary">
+            <Link key={l.href} href={l.href} className={linkClass(l.href)}>
               {l.label}
             </Link>
           ))}
           {user &&
             loggedInExtra.map((l) => (
-              <Link key={l.href} href={l.href} className="text-sm font-medium text-neutral hover:text-primary">
+              <Link key={l.href} href={l.href} className={linkClass(l.href)}>
                 {l.label}
               </Link>
             ))}
-          <Link href="/contact" className="text-sm font-medium text-neutral hover:text-primary">
+          <Link href="/contact" className={linkClass("/contact")}>
             Contact
           </Link>
         </nav>
@@ -76,7 +87,7 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              <Link href="/login" className="text-sm font-medium hover:text-primary">
+              <Link href="/login" className={linkClass("/login")}>
                 Login
               </Link>
               <Link href="/register" className="rounded-lg bg-primary px-4 py-2 text-sm text-white hover:opacity-90">
@@ -96,7 +107,12 @@ export default function Navbar() {
       {open && (
         <div className="border-t bg-white px-4 py-3 md:hidden">
           {[...loggedOutLinks, ...(user ? loggedInExtra : []), { href: "/contact", label: "Contact" }].map((l) => (
-            <Link key={l.href} href={l.href} className="block py-2 text-sm" onClick={() => setOpen(false)}>
+            <Link
+              key={l.href}
+              href={l.href}
+              className={`block py-2 text-sm ${isActive(l.href) ? "font-semibold text-primary" : ""}`}
+              onClick={() => setOpen(false)}
+            >
               {l.label}
             </Link>
           ))}
